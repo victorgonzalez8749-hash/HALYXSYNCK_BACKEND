@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-// 1. Modelos JSON (¡Agregamos el nombre a la respuesta para la app!)
+
 @Serializable
 data class LoginRequest(
     val correo: String,
@@ -24,6 +24,14 @@ data class LoginResponse(
     val nombre: String? = null
 )
 
+@Serializable
+data class Pacientes(
+    val nombre: String,
+    val apellidoPaterno: String = "",
+    val apellidoMaterno: String = "",
+    val fechaNacimiento: String = "",
+    val curp: String = ""
+)
 
 object UsuariosTable : Table("usuarios") {
     val idUsuario = integer("id_usuario").autoIncrement()
@@ -35,48 +43,48 @@ object UsuariosTable : Table("usuarios") {
     override val primaryKey = PrimaryKey(idUsuario)
 }
 
-// 3. Configuración de la ruta
+//  Configuración de la ruta
 fun Application.configureRouting() {
     routing {
 
         post("/login") {
-            try {
-                val solicitud = call.receive<LoginRequest>()
+            //  desprotegemos el codigo quitando la parte del try-catch para que nuestro
+            // programa sea vulnerable
+            val solicitud = call.receive<LoginRequest>()
 
-                // Buscamos al usuario en Railway
-                val usuarioEncontrado = transaction {
-                    UsuariosTable.selectAll().where {
-                        (UsuariosTable.correo eq solicitud.correo) and
-                                (UsuariosTable.contrasena eq solicitud.contrasena)
-                    }.singleOrNull()
-                }
+            val usuarioEncontrado = transaction {
+                UsuariosTable.selectAll().where {
+                    (UsuariosTable.correo eq solicitud.correo) and
+                            (UsuariosTable.contrasena eq solicitud.contrasena)
+                }.singleOrNull()
+            }
 
-                if (usuarioEncontrado != null) {
-                    val rolUsuario = usuarioEncontrado[UsuariosTable.rol]
-                    val nombreUsuario = usuarioEncontrado[UsuariosTable.nombreCompleto]
-
-                    call.respond(
-                        HttpStatusCode.OK,
-                        LoginResponse(
-                            loginExitoso = true,
-                            mensaje = "¡Bienvenido, $nombreUsuario!",
-                            rol = rolUsuario,
-                            nombre = nombreUsuario
-                        )
-                    )
-                } else {
-                    call.respond(
-                        HttpStatusCode.Unauthorized,
-                        LoginResponse(loginExitoso = false, mensaje = "Correo o contraseña incorrectos.")
-                    )
-                }
-
-            } catch (e: Exception) {
+            if (usuarioEncontrado != null) {
                 call.respond(
-                    HttpStatusCode.BadRequest,
-                    LoginResponse(loginExitoso = false, mensaje = "Error: ${e.localizedMessage}")
+                    HttpStatusCode.OK,
+                    LoginResponse(
+                        loginExitoso = true,
+                        mensaje = "¡Bienvenido!",
+                        rol = usuarioEncontrado[UsuariosTable.rol],
+                        nombre = usuarioEncontrado[UsuariosTable.nombreCompleto]
+                    )
+                )
+            } else {
+                call.respond(
+                    HttpStatusCode.Unauthorized,
+                    LoginResponse(loginExitoso = false, mensaje = "Incorrecto.")
                 )
             }
+        }
+
+
+        post("/pacientes/nuevo") {
+            val paciente = call.receive<Paciente>()
+            org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction(kotlinx.coroutines.Dispatchers.IO) {
+                exec("INSERT INTO Pacientes (nombre) VALUES ('${paciente.nombre}')")
+                commit()
+            }
+            call.respondText("Guardado", status = HttpStatusCode.Created)
         }
 
     }

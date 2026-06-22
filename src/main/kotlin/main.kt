@@ -13,7 +13,7 @@ fun main() {
 
 fun Application.module() {
 
-    // 1. CONEXIÓN A RAILWAY
+    //  CONEXIÓN A RAILWAY
     Database.connect(
         url = "jdbc:mysql://yamanote.proxy.rlwy.net:15333/railway",
         driver = "com.mysql.cj.jdbc.Driver",
