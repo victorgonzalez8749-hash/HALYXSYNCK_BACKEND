@@ -48,10 +48,44 @@ fun Application.configureRouting() {
     routing {
 
         post("/login") {
-            //  desprotegemos el codigo quitando la parte del try-catch para que nuestro
-            // programa sea vulnerable
-            val solicitud = call.receive<LoginRequest>()
+            try {
+               val solicitud = call.receive<LoginRequest>()
 
+               val usuarioEncontrado = transaction {
+                   UsuariosTable.selectAll().where {
+                       (UsuariosTable.correo eq solicitud.correo) and
+                               (UsuariosTable.contrasena eq solicitud.contrasena)
+                   }.singleOrNull()
+               }
+
+               if (usuarioEncontrado != null) {
+                   val rolUsuario = usuarioEncontrado[UsuariosTable.rol]
+                   val nombreUsuario = usuarioEncontrado[UsuariosTable.nombreCompleto]
+
+                   call.respond(
+                       HttpStatusCode.OK,
+                       LoginResponse(
+                           loginExitoso = true,
+                           mensaje = "¡Bienvenido, $nombreUsuario!",
+                           rol = rolUsuario,
+                           nombre = nombreUsuario
+                       )
+                   )
+               } else {
+                   call.respond(
+                       HttpStatusCode.Unauthorized,
+                       LoginResponse(loginExitoso = false, mensaje = "Correo o contraseña incorrectos.")
+                   )
+               }
+
+           } catch (e: Exception) {
+               call.respond(
+                   HttpStatusCode.BadRequest,
+                   LoginResponse(loginExitoso = false, mensaje = "Error: ${e.localizedMessage}")
+               )
+           }
+
+            val solicitud = call.receive<LoginRequest>()
             val usuarioEncontrado = transaction {
                 UsuariosTable.selectAll().where {
                     (UsuariosTable.correo eq solicitud.correo) and

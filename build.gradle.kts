@@ -9,7 +9,7 @@ group = "com.halyxsync"
 version = "1.0.0-SNAPSHOT"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass.set("com.halyxsync.MainKt")
 }
 
 kotlin {
